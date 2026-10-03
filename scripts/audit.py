@@ -347,6 +347,82 @@ def _split_lyrics(lyrics):
     return paras
 
 
+# ---- 韵脚归一（v2.1.0 新增，v2.1.1 修正）----
+# 为什么要做：判例 (2014)穗中法知民终字第289号 的采信理由之一是
+# 「韵脚统一押 ang」——两句末字不同（湖海/这里/世道 vs 阴凉/这里/归途）但**韵母相同**。
+# 只比较末字字符，测不出这件事，属于「测了但测不到点上」。
+#
+# ⚠ v2.1.1 修正：v2.1.0 以为用「末两字后缀匹配」就能取到韵母，那是错的——
+#   绝大多数汉字是单字，「海」的两字后缀就是「海」本身，取不到韵母。
+#   结果：韵脚相似度恒等于字面相似度 = **一个看起来合理、实则毫无信息量的假数字**。
+#   修法：内嵌「汉字→韵母」映射表（按韵母分组的常用字），未覆盖的字标 unknown
+#   并在输出中**报告识别覆盖率**，覆盖率过低时该指标降权而非沉默。
+_RHYME_GROUPS = {
+    'a': '那啊啦他她它沙发花芽拿家啦马骂大他她卡沙查沙',  # 开口呼 a
+    'ai': '哀挨唉爱海白莱来灾采该开才带待呆妹太盖埋拜耐寨哉债',
+    'ei': '诶杯美得雷飞黑背非给贼泪贝配推谁灰腿妹',
+    'ao': '熬凹袄奥好老高告道咬包毛刀涛桥昭绕到保找早操抱草',
+    'ou': '欧呕藕够狗口后走投头柔收周够楼偷手口候',
+    'an': '岸山看晚帆还弹干团暖兰男言散三安岸半岸眼现段远山间',
+    'en': '恩根门生人真分恨珍笨沉喷奔人本很',
+    'in': '因音引金心林深今寻近沉阴新民亲',
+    'ang': '昂航杭浪光方唱往茫香荡长常样上放唱浪墙强床光',
+    'eng': '疼等冷灯曾朋更城成生能疼层等',
+    'ing': '英影明听星行轻静领定经京晴停醒镜影形',
+    'ong': '风中空红东同中痛拥龙送种充公',
+    'i': '一以已起地提西希衣你米比力记意事世里利息起题低',
+    'u': '五无屋土出路图苦孤呼去住书如故路步暮',
+    'v': '玉雨绿举鱼女书去雨律',
+    'ie': '叶夜别写铁切街爷叶接谢',
+    'e': '热呢得而哥可河德么的了这热',
+    'er': '儿二而耳热',
+    'ia': '呀家下夏架价假牙',
+    'ua': '花抓瓜跨挂话',
+    'uo': '我多火说国过落活坐',
+    've': '雪月学越',
+    'ui': '水回追灰泪',
+    'iu': '六有牛流九留',
+    'van': '远圆元全源园愿',
+    'ue': '月雪约',
+}
+RHYME_LOOKUP = {}
+for _k, _chars in _RHYME_GROUPS.items():
+    for _c in _chars:
+        # 首次出现优先（避免被后面的组覆盖，如「去」应归 u 而非 v）
+        RHYME_LOOKUP.setdefault(_c, _k)
+
+# 韵类合并（近韵归并，用于相似度比较）
+_RHYME_CLASS = {
+    'ang': 'ang', 'ao': 'au', 'ai': 'ai', 'ei': 'ei', 'i': 'i',
+    'an': 'an', 'en': 'en', 'in': 'in', 'ing': 'ing', 'eng': 'eng',
+    'ong': 'ong', 'u': 'u', 'v': 'v', 'ui': 'ei', 'iu': 'iou',
+    'ie': 'ie', 'e': 'e', 'er': 'er', 'ia': 'ia', 'ua': 'ua',
+    'uo': 'uo', 've': 've', 'ou': 'au', 'a': 'a', 'van': 'van', 'ue': 've',
+}
+
+
+def _rhyme_of(ch):
+    """单字 → 韵类；未覆盖返回 None（计入覆盖率分母）"""
+    f = RHYME_LOOKUP.get(ch)
+    if not f:
+        return None
+    return _RHYME_CLASS.get(f, f)
+
+
+def _rhyme_profile(sentences):
+    """一批句子的韵类序列 + 识别覆盖率"""
+    classes, total = [], 0
+    for s in sentences:
+        if not s:
+            continue
+        total += 1
+        c = _rhyme_of(s[-1])
+        if c:
+            classes.append(c)
+    cov = len(classes) / total if total else 0.0
+    return classes, cov
+
+
 def check_lyrics_objective_features(track, rule, ctx):
     """
     E-001c 歌词抄袭客观特征提取
@@ -377,10 +453,21 @@ def check_lyrics_objective_features(track, rule, ctx):
     struct_sim = difflib.SequenceMatcher(None, t_sent, r_sent).ratio()
     para_sim = difflib.SequenceMatcher(None, t_struct, r_struct).ratio()
 
-    # 3) 押韵表（每句末字）
-    t_rhyme = [s[-1] for x in t_paras for s in x if s]
-    r_rhyme = [s[-1] for x in r_paras for s in x if s]
-    rhyme_sim = difflib.SequenceMatcher(None, ''.join(t_rhyme), ''.join(r_rhyme)).ratio()
+    # 3) 押韵表
+    #    v2.1.0：双轨输出 —— 末字字面相似 + 韵母韵类相似。
+    #    判例采信的是「韵脚统一押 ang」，末字不同但韵母相同才是关键信号，
+    #    只比末字会把真正的押韵雷同判成「不相似」。
+    t_sentences = [s for x in t_paras for s in x if s]
+    r_sentences = [s for x in r_paras for s in x if s]
+    t_rhyme_chars = [s[-1] for s in t_sentences]
+    r_rhyme_chars = [s[-1] for s in r_sentences]
+    rhyme_char_sim = difflib.SequenceMatcher(None, ''.join(t_rhyme_chars),
+                                             ''.join(r_rhyme_chars)).ratio()
+    t_rhyme, t_cov = _rhyme_profile(t_sentences)
+    r_rhyme, r_cov = _rhyme_profile(r_sentences)
+    rhyme_sim = difflib.SequenceMatcher(None, ''.join(t_rhyme), ''.join(r_rhyme)).ratio() \
+        if (t_rhyme and r_rhyme) else 0.0
+    cov_min = min(t_cov, r_cov)
 
     # 4) n-gram 连续重合
     t_ng = {t_flat[i:i + n] for i in range(max(0, len(t_flat) - n + 1))}
@@ -397,16 +484,24 @@ def check_lyrics_objective_features(track, rule, ctx):
         f'字级重合率 {char_ratio:.1%}',
         f'句长序列相似 {struct_sim:.1%}',
         f'段落句数结构相似 {para_sim:.1%}',
-        f'押韵表相似 {rhyme_sim:.1%}',
+        f'韵脚相似（韵母归一） {rhyme_sim:.1%}  ← 判例采信要点'
+        f'（韵类识别覆盖率 {cov_min:.0%}）',
+        f'　韵脚字面相似（仅末字） {rhyme_char_sim:.1%}  ← 对照用',
         f'{n}-gram 重合 {ngram_ratio:.1%}'
         + (f'（重合片段：{"、".join(sorted(overlap)[:5])}）' if overlap else ''),
         f'起句比对：{t_first!r} vs {r_first!r} → {"相同" if first_same else "不同"}',
+        f'韵类序列：待检 {"".join(t_rhyme)[:16]} vs 对照 {"".join(r_rhyme)[:16]}',
     ]
+    if cov_min < 0.6:
+        feats.append(f'⚠ 韵类识别覆盖率仅 {cov_min:.0%}（映射表未覆盖部分末字），'
+                     f'韵脚指标可信度下降 —— 需补 _RHYME_GROUPS 或人工核对')
     ctx.setdefault('features', []).append({
         'rule': 'E-001c', 'char_ratio': round(char_ratio, 4),
         'struct_sim': round(struct_sim, 4), 'para_sim': round(para_sim, 4),
-        'rhyme_sim': round(rhyme_sim, 4), 'ngram_ratio': round(ngram_ratio, 4),
-        'first_line_same': first_same,
+        'rhyme_sim': round(rhyme_sim, 4), 'rhyme_char_sim': round(rhyme_char_sim, 4),
+        'rhyme_coverage': round(cov_min, 4),
+        'ngram_ratio': round(ngram_ratio, 4), 'first_line_same': first_same,
+        'rhyme_seq_target': ''.join(t_rhyme), 'rhyme_seq_reference': ''.join(r_rhyme),
     })
 
     need = []
@@ -421,6 +516,15 @@ def check_lyrics_objective_features(track, rule, ctx):
         need.append(f'句长序列高度相似（{struct_sim:.1%}）')
     if p.get('warn_structure_match') and para_sim >= 0.9:
         need.append(f'段落句数结构高度相似（{para_sim:.1%}）')
+    # 韵脚：判例采信要点，独立设阈；覆盖率不足时降权
+    if cov_min >= 0.6:
+        if rhyme_sim >= 0.9:
+            need.append(f'韵脚韵类高度一致（{rhyme_sim:.1%}，覆盖率 {cov_min:.0%}）—— '
+                        f'判例中「韵脚统一」是采信的独立理由，非辅证')
+        elif rhyme_sim >= 0.7:
+            need.append(f'韵脚韵类较一致（{rhyme_sim:.1%}，覆盖率 {cov_min:.0%}）')
+    else:
+        need.append(f'韵脚指标因识别覆盖率仅 {cov_min:.0%} 暂不采信（需补映射表）')
     if ngram_ratio > 0:
         need.append(f'存在 {n} 字以上连续重合片段')
     if first_same:
@@ -525,6 +629,21 @@ def main():
     print("红线声明：")
     for r in policy.get('red_lines', []):
         print("  ⛔ " + r)
+
+    # 需专业复核提示（v2.1.0 新增）—— 让工具自己说清哪几条不敢保证
+    npr = policy.get('needs_pro_review') or []
+    if npr:
+        high = [x for x in npr if x.get('risk') == 'high']
+        md = policy.get('review_metadata', {})
+        print('-' * 74)
+        print(f"⚠ 需专业复核 {len(npr)} 条（其中高风险 {len(high)} 条）"
+              f"｜ 核证于 {md.get('reviewed_at', '—')}")
+        for x in high:
+            print(f"  ⚠ [{x.get('rule')}] {x.get('question', '')[:88]}")
+        print(f"  详情见 policy 表 needs_pro_review 字段（{md.get('who', '建议律师复核')}）")
+        if md.get('reviewer_note'):
+            print(f"  {md['reviewer_note'][:100]}")
+
     if blocks:
         print("结论：不通过（存在法律强制/平台技术 BLOCK 项），先修再发行。")
         return 1
