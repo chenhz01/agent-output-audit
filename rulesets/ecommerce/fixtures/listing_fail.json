@@ -1,0 +1,27 @@
+{
+  "title": "夹具·真实失败样本（Amazon 美国站 listing）",
+  "marketplace": "US",
+  "listing": {
+    "product": {
+      "name": "Portable Blender",
+      "category": "kitchen",
+      "claims": "可打碎冰块，30 秒出果汁"
+    },
+    "title": "Portable Blender ！！ Free Shipping Portable Blender Portable Blender Best Quality",
+    "bullets": [
+      "🥤 强劲动力：可打碎冰块，30 秒出果汁",
+      "全能退款保障：https://shop.example.com",
+      "很好用",
+      "★★★★★ 五星好评，N/A 规格",
+      "USB-C 快充，Type-C 接口，容量 400ml，重量 1.2kg，材质 Tritan，一次充电可用 15 次，适合办公室与健身房"
+    ],
+    "ad_copy": {
+      "headline": "30 天无忧试用，100% 有效",
+      "description": "行业第一，稳赚不赔，零风险"
+    }
+  },
+  "_context": {
+    "marketplace": "US",
+    "ai_generated": true
+  }
+}
