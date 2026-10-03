@@ -307,5 +307,11 @@ class RuleSet:
                     {'rule': 'AMZ-*', 'risk': 'medium',
                      'question': 'Amazon 各站点政策独立且更新频繁，本表阈值为公开规范常见值，'
                                  '发布前须按目标站点最新 Seller Central 文档逐条复核。',
-                     'who': '需按站点官方文档复核'},
-                ]}
+                     'who': '需按站点官方文档复核'}]}
+
+    @classmethod
+    def validate(cls):
+        """返回 check 字段无法解析的规则 ID 列表（空=全部对得上）"""
+        return [rid for rid, rd in POLICY['rules'].items()
+                if rd.get('check') not in CHECKERS]
+

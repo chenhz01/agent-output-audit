@@ -31,8 +31,12 @@ def cmd_list():
             eng = Engine(path, name, None)
             rs = eng._load_ruleset()
             n = len(rs.load())
+            # list 也要跑 validate：键名不匹配应在列目录时就暴露，
+            # 而不是等到 run 时才发现「0 条规则」。
+            miss = rs.validate() if hasattr(rs, 'validate') else []
+            flag = f'   ⚠ {len(miss)} 条 check 未解析' if miss else ''
             print(f'  {name:14} {getattr(rs, "display", ""):24} '
-                  f'{n:3} 条规则  v{getattr(rs, "version", "?")}')
+                  f'{n:3} 条规则  v{getattr(rs, "version", "?")}{flag}')
         except Exception as e:
             print(f'  {name:14} ⚠ 加载失败: {type(e).__name__}: {e}')
     return 0

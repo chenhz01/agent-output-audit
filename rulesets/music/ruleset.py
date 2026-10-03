@@ -454,6 +454,12 @@ class RuleSet:
         return rules
 
     @classmethod
+    def validate(cls):
+        """返回 check 字段无法解析的规则 ID 列表（空=全部对得上）"""
+        return [rid for rid, rd in POLICY.get('rules', {}).items()
+                if rd.get('check') not in CHECKERS]
+
+    @classmethod
     def meta(cls):
         return {
             'display': cls.display,

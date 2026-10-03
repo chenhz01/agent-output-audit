@@ -135,11 +135,20 @@ class Engine:
             rs = self._load_ruleset()
         except Exception as e:
             return self._fatal(f'规则集加载失败: {type(e).__name__}: {e}')
+        # v1.1：目标可以是「已适配的结构(json)」或「原始文本(md/html/py)」。
+        # 非 json 一律过适配器层转成统一中间结构 —— 规则只面对结构，不面对文本。
+        raw_text = ''
         try:
-            with open(self.target_path, encoding='utf-8') as f:
-                target = json.load(f)
+            with open(self.target_path, encoding='utf-8', errors='replace') as f:
+                raw_text = f.read()
+            if self.target_path.lower().endswith('.json'):
+                target = json.loads(raw_text)
+            else:
+                from engine import adapters
+                target = adapters.adapt(self.target_path)
+                target['_target_path'] = self.target_path
         except Exception as e:
-            return self._fatal(f'目标文件读取失败: {type(e).__name__}: {e}')
+            return self._fatal(f'适配器转换失败: {type(e).__name__}: {e}')
 
         rules = rs.load()
         # v1.0.2：零规则守卫。
@@ -152,10 +161,29 @@ class Engine:
                 f'规则集 {rs.name} 产出 0 条规则 —— 这是配置错误（'
                 f'通常是 CHECKERS 键名与 policy 的 check 字段不匹配），'
                 f'不是「没有问题」。已中止，不输出通过结论。')
+
+        # v1.0.3：未解析检查器的守卫。
+        # 教训：键名不匹配这个坑一天踩了 3 次，每次都表现为「0 条规则」
+        # 或「部分规则静默失效」。若规则集提供 validate()，逐条点名未解析的
+        # check，让错误直接指向出问题的规则 ID，而不是让人猜。
+        if hasattr(rs, 'validate'):
+            try:
+                missing = rs.validate()
+            except Exception as e:
+                return self._fatal(f'规则集 validate() 异常: '
+                                   f'{type(e).__name__}: {e}')
+            if missing:
+                return self._fatal(
+                    f'规则集 {rs.name} 有 {len(missing)} 条规则的 check 字段'
+                    f'无法解析（键名不匹配）：{", ".join(missing[:5])}'
+                    f'{"…" if len(missing) > 5 else ""}。已中止。')
         ctx = dict(target.get('_context', {}))
         ctx.update(self.extra_ctx)
         ctx['_ruleset'] = rs
         ctx['_target'] = target
+        # 原文交给需要做文本级扫描的规则（如凭据泄漏），
+        # 但**不进统一结构** —— 否则「规则只面对结构」的契约就破了。
+        ctx['_raw'] = raw_text
 
         results = []
         for rule in rules:
