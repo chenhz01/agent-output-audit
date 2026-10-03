@@ -1,11 +1,14 @@
 {
-  "title": "夹具·全通过样本（AI 生成歌 + Spotify 发行 + 四要素齐全）",
+  "title": "夹具·全通过样本（AI 生成歌 + Spotify 自愿披露 + 四要素齐全）",
   "type": "audio",
   "lyrics": "清晨的窗台落了一层薄光\n我数着昨天忘掉的愿望\n你留下的杯子还在原地方\n茶渍画成一个安静的太阳\n街角的梧桐把影子拉得很长\n像一句没说出口的收藏\n我把今天折进口袋里收藏\n等某个傍晚再慢慢打开晾",
   "metadata": {
-    "explicit_ai_label": true,
-    "implicit_ai_flag": true,
-    "eu_ai_disclosed": true,
+    "user_ai_declaration": true,
+    "label_tampering": false,
+    "eu_machine_readable_marking": true,
+    "is_deepfake": false,
+    "is_artistic_work": true,
+    "eu_ai_disclosed_by_appropriate_means": true,
     "composer": "善伦",
     "lyricist": "善伦",
     "performer": "通感者",

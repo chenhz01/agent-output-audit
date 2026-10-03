@@ -1,170 +1,280 @@
 {
-  "policy_version": "2026-10-04.0",
-  "schema_note": "音乐发行前合规体检政策表。每条规则必须有 source（可复核出处）与 enabled（可开关）。政策会过期 —— 本表的存在意义是版本化维护成本，这正是护城河。",
+  "policy_version": "2026-10-04.1",
+  "schema_note": "音乐发行前合规体检政策表 v2 —— 经 13 条逐条原文核证后重建。核心变更：区分【法律强制】/【商业惯例】/【平台技术要求】/【本项目自定义】/【判例】五类，纠正 6 处硬伤。政策会过期 —— 这张表的存在意义是版本化维护成本。",
+  "rewrite_reason": "v1（2026-10-04.0）经独立核证发现 6 处硬伤：E-001c 比对对象与裁判要旨双错、A-005 条款号与定性双错、A-002『缺一即违规』系杜撰、C-003 商业惯例包装成法律义务、C-002 UPC 无法律依据、B-001d『要求』实为自愿。v1 提交于 commit caf332a，已被本版取代。",
   "maintainer": "zhengming",
   "last_audited": "2026-10-04",
+  "audit_method": "逐条比对政府/监管机构官网、平台官方条款页、司法裁判文书；不接受二手博客作为 source",
+
+  "enforce_types": {
+    "legal_mandatory": "法律强制 —— 有明确法规/国标条文依据，违反即违法",
+    "legal_standard": "法律标准 —— 司法裁判确立的认定标准，非条文义务",
+    "case_law": "判例 —— 具裁判要旨的法院认定",
+    "commercial_practice": "商业惯例 —— 发行商/DSP/集体管理组织要求，法律未设强制",
+    "platform_technical": "平台技术要求 —— DSP 交付规范字段",
+    "platform_statement": "平台公开表态 —— 无可引用条款页，须标注",
+    "project_custom": "本项目自定义 —— 超出监管最低要求，供差异化披露用"
+  },
 
   "distributors": {
     "cdbaby": {
       "display": "CD Baby",
       "ai_generated": "reject",
-      "note": "官方条款：不接收 AI 生成内容",
-      "source": "https://cdbaby.com/music-distribution/",
+      "enforce_type": "platform_technical",
+      "severity": "BLOCK",
+      "note": "官方页原文：'You will not be able to distribute A.I.-generated content.' 部分 AI 亦拒：'Even if you contributed original sounds... and only part of the recording is AI, we are still unable to distribute this content.' 违规后果：'we will remove it from distribution' 且可能终止合作。",
+      "source": "https://support.cdbaby.com/hc/en-us/articles/204498265-Do-I-need-to-own-all-the-rights-to-the-music-I-m-selling",
+      "source_2": "https://support.cdbaby.com/hc/en-us/articles/23638450756237-Production-Sounds",
       "enabled": true
     },
     "tunecore": {
       "display": "TuneCore",
       "ai_generated": "conditional",
+      "enforce_type": "platform_technical",
+      "severity": "BLOCK",
       "requires_licensed_dataset": true,
-      "note": "只接受底层模型使用完全获许可数据集的 AI 音轨",
-      "source": "https://support.tunecore.com/hc/en-us/articles/8409664-AI-generated-music",
+      "no_partial_exemption": true,
+      "named_partner": "Google Flow Music",
+      "note": "官方原文：'TuneCore only distributes music created using GenAI models trained on fully licensed datasets.' 关键严苛点：'If GenAI is used at any point in the creation of a track, the tools involved must rely on fully licensed datasets.' —— 混音/母带环节用 AI 亦受限，无『纯 AI 才受限』豁免。与 CD Baby 不同。",
+      "source": "https://support.tunecore.com/hc/en-us/articles/46914166185236-TuneCore-s-GenAI-Policy",
       "enabled": true
     },
     "netease_cloud": {
       "display": "网易云音乐",
       "ai_generated": "declare",
+      "enforce_type": "platform_statement",
+      "severity": "WARN",
       "requires_declaration": true,
       "declaration_field": "ai_declaration",
-      "note": "创作者须主动声明 AI 成分",
-      "source": "网易云音乐创作者平台公约",
+      "note": "⚠️ 无可引用的官方条款页。music.163.com/st/creatordoc/terms 无 AI 声明条款；aivaterms 是反向条款（网易自提供 AI 素材、素材知识产权归网易）。唯一依据为客服对媒体口头表态（扬子晚报 2026-04）：AI 内容『检测发现或用户主动声明后会在交互界面显性标识』，且自述『目前尚处于小范围测试阶段』。与《标识办法》第十条『用户应当主动声明』方向一致。",
+      "source": "客服对媒体表态（无官方条款页）——扬子晚报 2026-04-18",
+      "source_caveat": "无官方页面，不可作为合规依据引用，仅作风险提示",
       "enabled": true
     },
     "spotify": {
       "display": "Spotify",
-      "ai_generated": "credit",
-      "requires_ai_credits": true,
+      "ai_generated": "voluntary_credit",
+      "enforce_type": "platform_technical",
+      "severity": "INFO",
+      "requires_ai_credits": false,
       "credit_fields": ["vocal", "lyrics", "instrumental", "post_production"],
-      "note": "须标注 AI Credits，人声/歌词/乐器/后期分开填",
-      "source": "https://support.spotify.com/artists/article/ai-disclosure/",
+      "ddex_standard_classes": 5,
+      "note": "⚠️ 官方原文：'AI credits are optional for artists to share.' 且 'The absence of AI credits doesn't mean AI wasn't used on a song.' —— 自愿披露，未披露不构成平台违规。四类映射（vocal→Vocals / lyrics→Lyrics / instrumental→Instrumentals / post-production→Production）与 Spotify 支持页一致；DDEX 标准另含 AI composition 共五类。",
+      "source": "https://support.spotify.com/tj-en/article/ai-credits/",
+      "source_2": "https://newsroom.spotify.com/tag/ai",
       "enabled": true
     }
   },
 
   "rules": {
     "A-001": {
-      "group": "AI 标识合规",
+      "group": "AI 标识合规（中国）",
       "region": "CN",
+      "enforce_type": "legal_mandatory",
       "severity": "BLOCK",
-      "desc": "面向中国境内发布，须有显式 AI 生成标识",
-      "check": "explicit_ai_label",
-      "source": "《人工智能生成合成内容标识办法》2025-09-01 施行",
+      "desc": "用户发布 AI 生成合成内容，应当主动声明并使用服务提供者提供的标识功能（《标识办法》第十条）。⚠️ 义务主体澄清：显式/隐式标识的添加义务在【服务提供者】侧（第四条/第五条），用户侧义务是【主动声明】。",
+      "check": "user_ai_declaration",
+      "source": "《人工智能生成合成内容标识办法》第十条 / 第四条 / 第五条 —— https://www.cac.gov.cn/2025-03/14/c_1743654684782215.htm",
       "enabled": true
     },
     "A-002": {
-      "group": "AI 标识合规",
+      "group": "AI 标识合规（中国）",
       "region": "CN",
+      "enforce_type": "legal_mandatory",
       "severity": "BLOCK",
-      "desc": "须有隐式标识（文件元数据），与显式标识构成双标识，缺一即违规",
-      "check": "implicit_metadata_ai_flag",
-      "source": "《人工智能生成合成内容标识办法》",
+      "desc": "禁止【恶意】删除、篡改、伪造、隐匿标识（第十条第二款）。⚠️ 重要澄清：法规并未规定『双标识缺一即违规』——第九条明文允许服务提供者在用户协议明确责任后提供『不含显式标识』的生成合成内容；且官方明确数字水印、文本隐式标识『不作强制要求』，属鼓励项。",
+      "check": "no_malicious_tampering_declaration",
+      "source": "《人工智能生成合成内容标识办法》第九条 / 第十条第二款；网信办答记者问『不作强制要求』；GB 45438-2025 附录 A2 图注",
       "enabled": true
     },
     "A-003": {
-      "group": "AI 标识合规",
+      "group": "AI 标识合规（中国）",
       "region": "CN",
+      "enforce_type": "legal_mandatory",
       "severity": "WARN",
-      "desc": "视频内文字提示高度须 ≥ 画面最短边 5%",
+      "desc": "视频显式标识的文字高度不应低于画面最短边长度的 5%。⚠️ 数值出处为强制性国标 GB 45438-2025 第 5.4 条 f) 项，非《标识办法》条文（办法无任何数值）。",
       "check": "video_overlay_min_ratio",
       "params": { "min_ratio": 0.05 },
       "applies_to": "video",
-      "source": "《人工智能生成合成内容标识办法》",
+      "source": "GB 45438-2025《网络安全技术 人工智能生成合成内容标识方法》第5.4条 f) —— https://www.tc260.org.cn/upload/2025-03-15/1742009439794081593.pdf",
       "enabled": true
     },
     "A-004": {
-      "group": "AI 标识合规",
+      "group": "AI 标识合规（中国）",
       "region": "CN",
+      "enforce_type": "legal_mandatory",
       "severity": "WARN",
-      "desc": "视频内文字提示须持续显示 ≥ 2 秒",
+      "desc": "视频正常播放速度下，显式标识持续时间不应少于 2 秒。⚠️ 数值出处同 A-003，为 GB 45438-2025 第 5.4 条 g) 项。",
       "check": "video_overlay_min_seconds",
       "params": { "min_seconds": 2.0 },
       "applies_to": "video",
-      "source": "《人工智能生成合成内容标识办法》",
+      "source": "GB 45438-2025 第5.4条 g)",
       "enabled": true
     },
-    "A-005": {
-      "group": "AI 标识合规",
+    "A-005a": {
+      "group": "AI 标识合规（欧盟）",
       "region": "EU",
-      "severity": "BLOCK",
-      "desc": "欧盟 AI Act Art.50(2) 要求 AI 生成内容主动披露（2026-08-02 生效，延期传闻需按 policy_version 复核）",
-      "check": "eu_ai_disclosure",
-      "source": "EU AI Act Article 50(2)",
+      "enforce_type": "legal_mandatory",
+      "severity": "WARN",
+      "desc": "EU AI Act Art.50(2)：AI 系统【提供者】须确保输出以【机器可读格式标记】且可被检测为人工生成/操纵。2026-08-02 适用；Digital Omnibus（Regulation (EU) 2026/1744）仅将此项对 2026-08-02 前已上市/已投入使用的系统宽限至 2026-12-02。⚠️ 此项非『主动披露』，义务主体是提供者。",
+      "check": "eu_ai_machine_readable_marking",
+      "source": "EU AI Act Article 50(2) —— https://artificialintelligenceact.eu/article/50/",
+      "enabled": true
+    },
+    "A-005b": {
+      "group": "AI 标识合规（欧盟）",
+      "region": "EU",
+      "enforce_type": "legal_mandatory",
+      "severity": "WARN",
+      "desc": "EU AI Act Art.50(4)：【部署者】的披露义务仅针对构成 deepfake 的内容（肖像/物体/地点/实体/事件的拟真内容），非全部 AI 生成内容；且艺术作品可退化为『以不妨碍作品呈现与欣赏的适当方式披露其存在』。此项无宽限，2026-08-02 适用。",
+      "check": "eu_ai_deployer_disclosure",
+      "source": "EU AI Act Article 50(4)",
       "enabled": true
     },
 
     "B-001": {
       "group": "发行商 AI 政策",
       "region": "*",
+      "enforce_type": "platform_technical",
       "severity": "BLOCK",
-      "desc": "按目标发行商的 AI 政策做二元判定（拒绝/需条件/需声明/需标注）",
+      "desc": "按目标发行商的 AI 政策做二元判定（拒收/需条件/需声明/自愿披露）",
       "check": "distributor_policy",
       "source": "policy.distributors",
       "enabled": true
     },
 
-    "C-001": {
+    "C-001a": {
       "group": "著作权元数据",
-      "region": "*",
+      "region": "CN",
+      "enforce_type": "legal_mandatory",
       "severity": "BLOCK",
-      "desc": "词曲作者（作曲/作词分开）、演唱者、制作人均须实名",
-      "check": "rights_holder_realname",
-      "source": "发行商发行要求通用",
+      "desc": "词曲作者（作曲/作词分开）署名权受法律保护，须表明作者身份并在作品上署名（《著作权法》第十条第二款、第十二条）。⚠️ 本项为法律强制，与 C-001b 不同。",
+      "check": "author_credit_legal",
+      "source": "《中华人民共和国著作权法》第十条 / 第十二条 —— https://www.gov.cn/guoqing/2021-10/29/content_5647633.htm",
       "enabled": true
     },
-    "C-002": {
+    "C-001b": {
       "group": "著作权元数据",
       "region": "*",
+      "enforce_type": "commercial_practice",
+      "severity": "WARN",
+      "desc": "表演者与制作人须填法定全名——⚠️【商业惯例，非法律义务】。中国著作权法未设『制作人』这一法定权利主体（署名权归录音制作者，见第四十三条）；表演者享法定权利（第三十九条）但法律未规定『发行时必须填实名』。此为发行商/DSP 平台要求（如 iMusician：『Artist aliases and pseudonyms will not be accepted』）。",
+      "check": "performer_producer_realname_practice",
+      "source": "《著作权法》第三十九条/第四十三条（界定权利主体）；平台要求见 iMusician FAQ",
+      "enabled": true
+    },
+    "C-002a": {
+      "group": "著作权元数据",
+      "region": "CN",
+      "enforce_type": "legal_mandatory",
       "severity": "BLOCK",
-      "desc": "ISRC（录音）/ UPC（发行）编码须存在且格式合法",
-      "check": "isrc_upc_present",
-      "params": { "isrc_len": 12, "upc_len": 12 },
-      "source": "ISRC Handbook / UPC 分配规范",
+      "desc": "每一可独立使用的录音制品或音乐录像制品均须分配单独 ISRC；用于出版的录音制品均应携载 ISRC 编码（含利用信息网络出版）。⚠️ 引用文号而非标准号：现行 GB/T 13396-2009 为【推荐性】国标（1992 版 GB 13396-92 才是强制性），法律强制力来自新出政发〔2011〕19 号。",
+      "check": "isrc_legal_mandatory",
+      "params": { "isrc_len": 12 },
+      "source": "新出政发〔2011〕19 号第二十条/第二十三条；中国 ISRC 中心实施办法第三条；GB/T 13396-2009（推荐性）—— https://isrc.ccopyright.com.cn/",
+      "enabled": true
+    },
+    "C-002b": {
+      "group": "著作权元数据",
+      "region": "*",
+      "enforce_type": "commercial_practice",
+      "severity": "WARN",
+      "desc": "UPC（GTIN-12）——⚠️【无中国法律强制依据】。由 GS1 颁发的全球零售商品编码，强制性来源仅为 DSP 交付规范（DDEX ERN/XML 必填字段，缺失即拒收）与实体零售/榜单（Luminate）需要。",
+      "check": "upc_platform_practice",
+      "params": { "upc_len": 12 },
+      "source": "DDEX ERN 交付规范（商业惯例）；GS1 UPC 规范",
       "enabled": true
     },
     "C-003": {
       "group": "著作权元数据",
       "region": "*",
-      "severity": "BLOCK",
-      "desc": "词曲分成比例须归一（多作者合计 100%）",
-      "check": "split_sum_normalized",
+      "enforce_type": "commercial_practice",
+      "severity": "WARN",
+      "desc": "词曲分成比例须登记并归一到 100%——⚠️【商业惯例 + 平台交付强制，非法律义务】。《著作权法》第十四条仅规定共同作品著作权由合作作者共同享有、收益应当合理分配，并无任何条文要求元数据分成比例登记为 100%。实践中依据为 DDEX 交付规范、集体管理组织（音著协/MCSC）分成表要求、各发行商上传表单强制字段。",
+      "check": "split_sum_normalized_practice",
       "params": { "expected_sum": 100.0, "tolerance": 0.01 },
-      "source": "词曲分成确认通用要求",
+      "source": "《著作权法》第十四条（仅规定合理分配，无归一要求）；DDEX ERN 交付规范（商业惯例）",
       "enabled": true
     },
-    "C-004": {
+    "C-004a": {
       "group": "著作权元数据",
-      "region": "*",
+      "region": "CN",
+      "enforce_type": "legal_mandatory",
       "severity": "BLOCK",
-      "desc": "母带权利人须明确（自录 / 他人母带，混用为侵权高发点）",
-      "check": "master_rights_declared",
-      "source": "发行商发行要求通用",
+      "desc": "母带（录音录像制品）享法定邻接权；被许可人复制、发行、通过信息网络传播录音录像制品，应当【同时取得著作权人、表演者许可】并支付报酬（第四十二条、第四十四条）。即母带与词曲/表演权分属不同权利主体，混用为侵权高发点。",
+      "check": "master_right_legal",
+      "source": "《著作权法》第四十二条 / 第四十四条",
       "enabled": true
     },
-    "C-005": {
+    "C-004b": {
       "group": "著作权元数据",
       "region": "*",
+      "enforce_type": "commercial_practice",
+      "severity": "WARN",
+      "desc": "在元数据中明确声明母带权利人（自录 / 他人母带）——⚠️【商业惯例，非法律】。母带权本身法定（C-004a），但『须在元数据中声明』是发行商条款要求（如 CD Baby：『You must either own the copyright for the sound recordings or have the authority or permission from the owner(s)』）。",
+      "check": "master_rights_declared_practice",
+      "source": "《著作权法》第四十二条/第四十四条（权利法定）；CD Baby 发行条款（声明义务为惯例）",
+      "enabled": true
+    },
+    "C-005a": {
+      "group": "著作权元数据",
+      "region": "CN",
+      "enforce_type": "legal_mandatory",
       "severity": "BLOCK",
-      "desc": "采样 / 声线 / 音色克隆授权书须齐备",
-      "check": "sample_voice_license",
-      "source": "著作权与声音权通用要求",
+      "desc": "使用他人作品（含采样）制作录音录像制品，应当取得著作权人许可并支付报酬（第四十二条第一款）；使用改编/汇编作品须取得该作品著作权人和原作品著作权人双重许可（第十六条）。",
+      "check": "sample_license_legal",
+      "source": "《著作权法》第四十二条第一款 / 第十六条",
+      "enabled": true
+    },
+    "C-005b": {
+      "group": "著作权元数据",
+      "region": "CN",
+      "enforce_type": "legal_mandatory",
+      "severity": "BLOCK",
+      "desc": "声线/音色克隆须留存被授权人书面同意——法律依据是【人格权与禁止仿冒】，而非格式化的授权书交付物。《民法典》第一千零一十八条（肖像权）、第一千零二十三条（声音权益参照肖像权保护）、第一千零一十九条（禁止以任何方式使用他人肖像/声音）：未经同意不得制作、使用他人声音。故表述为『须留存书面同意』，不称『法定授权书格式』。",
+      "check": "voice_clone_consent_legal",
+      "source": "《民法典》第一千零一十八条 / 第一千零一十九条 / 第一千零二十三条",
       "enabled": true
     },
 
     "D-001": {
-      "group": "AI 使用说明",
+      "group": "AI 使用说明（本项目自定义）",
       "region": "*",
+      "enforce_type": "project_custom",
       "severity": "WARN",
-      "desc": "AI 使用说明须含四要素：工具名 / 版本 / 参与环节 / 输入来源（多数人只写「AI 生成」——这是本工具的差异点）",
+      "desc": "AI 使用说明四要素：工具名 / 版本 / 参与环节 / 输入来源。⚠️【本项目自定义披露字段，超出监管最低要求，不可对外宣称为『合规要求』】。与《标识办法》第十条『主动声明』互补不冲突；与 Spotify/DDEX AI Credits 不冲突（四要素比 DDEX 的角色维度更细，是超集）。依据：多数创作者只写『AI 生成』，不写哪一环、用什么工具、喂了什么输入，无法界定责任边界。",
       "check": "ai_usage_four_elements",
       "params": { "elements": ["tool", "version", "stage", "input_source"] },
-      "source": "本项目自定义增量字段",
+      "source": "本项目自定义（无外部强制依据）",
       "enabled": true
     },
 
-    "E-001": {
+    "E-001a": {
+      "group": "歌词抄袭法律标准",
+      "region": "CN",
+      "enforce_type": "legal_standard",
+      "severity": "INFO",
+      "desc": "剽窃的认定标准是【接触 + 实质性相似】（二审民事判决书确立，广州法院系统官方年度案例综述复述）。",
+      "check": "lyrics_legal_standard_notice",
+      "source": "（2014）穗中法知民终字第289号；广州法院系统年度案例综述 —— https://www.zhichanli.com.cn/p/1999908346",
+      "enabled": true
+    },
+    "E-001b": {
+      "group": "歌词抄袭法律标准",
+      "region": "CN",
+      "enforce_type": "legal_standard",
+      "severity": "INFO",
+      "desc": "『八小节/四句』是司法实践的【经验参考线，不构成免责安全线】。准确表述：即使相似部分未达八小节、或在被诉作品中占比不大，但足以使听者感知来源于特定作品时，仍可构成实质性相似。（注：部分律师观点更倾向『六小节规则并无法律依据』，属学理观点非裁判要旨，本表不采用该表述。）",
+      "check": "eight_measure_not_safe_harbor",
+      "source": "人民网知识产权频道引专家何隽 —— https://ip.people.com.cn/BIG5/n1/2017/0904/c179663-29512901.html",
+      "enabled": true
+    },
+    "E-001c": {
       "group": "歌词抄袭客观特征",
-      "region": "*",
+      "region": "CN",
+      "enforce_type": "case_law",
       "severity": "WARN",
-      "desc": "提取客观相似特征供人工判断。⛔ 本工具绝不下「侵权/不侵权」结论——法律标准是「接触 + 实质性相似」，无量化法定阈值，必须人判。",
+      "desc": "提取客观相似特征供人工判断。⛔ 本工具绝不下『侵权/不侵权』结论。【判例要点】(2014)穗中法知民终字第289号（广州中院，2014 年度广州知识产权司法保护十大案例）：《新套马杆》歌词 179 字 vs《套马杆》歌词 182 字，16 句中 52 字相同。法院采信的实质理由是【结构+句式+起句+韵脚】全面雷同——均采用四段式结构、每段四句、句式结构高度一致，前段以『给我一+量词』起句，韵脚统一押『ang』，文字相似处『仅作近义词替换或微调』。二审维持侵权认定，赔偿改判 5 万元。⚠️ 重要澄清：并非因『52/182 比例高』而判侵权；且因权利人仅就词作品主张权利，法院未审理曲，【不得解读为『改词不侵权所以可用原曲』】。",
       "check": "lyrics_objective_features",
       "params": {
         "ngram": 4,
@@ -172,8 +282,15 @@
         "warn_char_ratio_low": 0.10,
         "warn_structure_match": true
       },
-      "source": "中国法院音乐著作权裁判标准（接触+实质性相似）",
+      "source": "（2014）穗中法知民终字第289号 · 广东省广州市中级人民法院 · 广州新月演艺经纪有限公司诉广东星文文化传播有限公司侵害其他著作财产权纠纷",
       "enabled": true
     }
-  }
+  },
+
+  "red_lines": [
+    "不做音频 AI 生成检测 / 人声克隆识别（独立评测显示厂商宣称准确率比审计结果高 15-23 个百分点）",
+    "不下『侵权 / 不侵权』结论——法律标准是『接触 + 实质性相似』，无量化法定阈值，必须人判",
+    "不把【商业惯例】包装成【法律义务】——C-001b / C-002b / C-003 / C-004b 均已标注为惯例",
+    "不把【本项目自定义】字段（D-001）宣称为『合规要求』"
+  ]
 }
