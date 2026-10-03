@@ -1,0 +1,33 @@
+{
+  "title": "夹具·真实失败样本（AI 生成歌 + 网易云发行 + 未声明）",
+  "type": "audio",
+  "lyrics": "给我一片湖海\n让我停在这里\n不管这世道\n有人曾在意\n给我一片湖海\n让我停在这里\n看潮水涌来\n像极了旧日\n给我一片远方\n让我走完这段\n不问值不值得\n也要再看一眼\n给我一片湖海\n让我停在这里\n看潮水退去",
+  "metadata": {
+    "explicit_ai_label": false,
+    "implicit_ai_flag": false,
+    "eu_ai_disclosed": false,
+    "composer": "",
+    "lyricist": "善伦",
+    "performer": "通感者",
+    "producer": "",
+    "isrc": "ZZ1234567890",
+    "upc": "123",
+    "splits": [
+      { "name": "善伦", "percent": 60 },
+      { "name": "通感者", "percent": 30 }
+    ],
+    "master_rights": "",
+    "uses_samples": true,
+    "uses_voice_clone": true,
+    "licenses": {},
+    "ai_usage": {
+      "tool": "Suno",
+      "version": ""
+    }
+  },
+  "_context": {
+    "ai_generated": true,
+    "distributor": "netease_cloud",
+    "target_regions": ["CN", "EU"]
+  }
+}

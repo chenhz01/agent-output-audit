@@ -1,0 +1,41 @@
+{
+  "title": "夹具·全通过样本（AI 生成歌 + Spotify 发行 + 四要素齐全）",
+  "type": "audio",
+  "lyrics": "清晨的窗台落了一层薄光\n我数着昨天忘掉的愿望\n你留下的杯子还在原地方\n茶渍画成一个安静的太阳\n街角的梧桐把影子拉得很长\n像一句没说出口的收藏\n我把今天折进口袋里收藏\n等某个傍晚再慢慢打开晾",
+  "metadata": {
+    "explicit_ai_label": true,
+    "implicit_ai_flag": true,
+    "eu_ai_disclosed": true,
+    "composer": "善伦",
+    "lyricist": "善伦",
+    "performer": "通感者",
+    "producer": "李四",
+    "isrc": "CNA231600001",
+    "upc": "695123456789",
+    "splits": [
+      { "name": "善伦", "percent": 60 },
+      { "name": "通感者", "percent": 40 }
+    ],
+    "master_rights": "自录（本人拥有母带）",
+    "uses_samples": false,
+    "uses_voice_clone": false,
+    "licenses": {},
+    "ai_credits": {
+      "vocal": "非 AI",
+      "lyrics": "AI 辅助润色（无生成内容）",
+      "instrumental": "AI 生成（Suno v4.1）",
+      "post_production": "非 AI"
+    },
+    "ai_usage": {
+      "tool": "Suno",
+      "version": "v4.1",
+      "stage": "instrumental（伴奏）",
+      "input_source": "自写歌词文本 + 自哼旋律描述，未使用第三方数据集"
+    }
+  },
+  "_context": {
+    "ai_generated": true,
+    "distributor": "spotify",
+    "target_regions": ["CN", "EU", "US"]
+  }
+}

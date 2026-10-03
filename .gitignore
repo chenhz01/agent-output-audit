@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# 本地私有（禁止入库：可能含真实曲目元数据/邮箱/API 信息）
+*.local.json
+.env
+.env.*
+private/
+*_private.*
+!README.md
+
+# 测试产物
+.pytest_cache/
+.coverage
+*.log
+
+# 操作系统
+Thumbs.db

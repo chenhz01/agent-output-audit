@@ -1,0 +1,179 @@
+{
+  "policy_version": "2026-10-04.0",
+  "schema_note": "音乐发行前合规体检政策表。每条规则必须有 source（可复核出处）与 enabled（可开关）。政策会过期 —— 本表的存在意义是版本化维护成本，这正是护城河。",
+  "maintainer": "zhengming",
+  "last_audited": "2026-10-04",
+
+  "distributors": {
+    "cdbaby": {
+      "display": "CD Baby",
+      "ai_generated": "reject",
+      "note": "官方条款：不接收 AI 生成内容",
+      "source": "https://cdbaby.com/music-distribution/",
+      "enabled": true
+    },
+    "tunecore": {
+      "display": "TuneCore",
+      "ai_generated": "conditional",
+      "requires_licensed_dataset": true,
+      "note": "只接受底层模型使用完全获许可数据集的 AI 音轨",
+      "source": "https://support.tunecore.com/hc/en-us/articles/8409664-AI-generated-music",
+      "enabled": true
+    },
+    "netease_cloud": {
+      "display": "网易云音乐",
+      "ai_generated": "declare",
+      "requires_declaration": true,
+      "declaration_field": "ai_declaration",
+      "note": "创作者须主动声明 AI 成分",
+      "source": "网易云音乐创作者平台公约",
+      "enabled": true
+    },
+    "spotify": {
+      "display": "Spotify",
+      "ai_generated": "credit",
+      "requires_ai_credits": true,
+      "credit_fields": ["vocal", "lyrics", "instrumental", "post_production"],
+      "note": "须标注 AI Credits，人声/歌词/乐器/后期分开填",
+      "source": "https://support.spotify.com/artists/article/ai-disclosure/",
+      "enabled": true
+    }
+  },
+
+  "rules": {
+    "A-001": {
+      "group": "AI 标识合规",
+      "region": "CN",
+      "severity": "BLOCK",
+      "desc": "面向中国境内发布，须有显式 AI 生成标识",
+      "check": "explicit_ai_label",
+      "source": "《人工智能生成合成内容标识办法》2025-09-01 施行",
+      "enabled": true
+    },
+    "A-002": {
+      "group": "AI 标识合规",
+      "region": "CN",
+      "severity": "BLOCK",
+      "desc": "须有隐式标识（文件元数据），与显式标识构成双标识，缺一即违规",
+      "check": "implicit_metadata_ai_flag",
+      "source": "《人工智能生成合成内容标识办法》",
+      "enabled": true
+    },
+    "A-003": {
+      "group": "AI 标识合规",
+      "region": "CN",
+      "severity": "WARN",
+      "desc": "视频内文字提示高度须 ≥ 画面最短边 5%",
+      "check": "video_overlay_min_ratio",
+      "params": { "min_ratio": 0.05 },
+      "applies_to": "video",
+      "source": "《人工智能生成合成内容标识办法》",
+      "enabled": true
+    },
+    "A-004": {
+      "group": "AI 标识合规",
+      "region": "CN",
+      "severity": "WARN",
+      "desc": "视频内文字提示须持续显示 ≥ 2 秒",
+      "check": "video_overlay_min_seconds",
+      "params": { "min_seconds": 2.0 },
+      "applies_to": "video",
+      "source": "《人工智能生成合成内容标识办法》",
+      "enabled": true
+    },
+    "A-005": {
+      "group": "AI 标识合规",
+      "region": "EU",
+      "severity": "BLOCK",
+      "desc": "欧盟 AI Act Art.50(2) 要求 AI 生成内容主动披露（2026-08-02 生效，延期传闻需按 policy_version 复核）",
+      "check": "eu_ai_disclosure",
+      "source": "EU AI Act Article 50(2)",
+      "enabled": true
+    },
+
+    "B-001": {
+      "group": "发行商 AI 政策",
+      "region": "*",
+      "severity": "BLOCK",
+      "desc": "按目标发行商的 AI 政策做二元判定（拒绝/需条件/需声明/需标注）",
+      "check": "distributor_policy",
+      "source": "policy.distributors",
+      "enabled": true
+    },
+
+    "C-001": {
+      "group": "著作权元数据",
+      "region": "*",
+      "severity": "BLOCK",
+      "desc": "词曲作者（作曲/作词分开）、演唱者、制作人均须实名",
+      "check": "rights_holder_realname",
+      "source": "发行商发行要求通用",
+      "enabled": true
+    },
+    "C-002": {
+      "group": "著作权元数据",
+      "region": "*",
+      "severity": "BLOCK",
+      "desc": "ISRC（录音）/ UPC（发行）编码须存在且格式合法",
+      "check": "isrc_upc_present",
+      "params": { "isrc_len": 12, "upc_len": 12 },
+      "source": "ISRC Handbook / UPC 分配规范",
+      "enabled": true
+    },
+    "C-003": {
+      "group": "著作权元数据",
+      "region": "*",
+      "severity": "BLOCK",
+      "desc": "词曲分成比例须归一（多作者合计 100%）",
+      "check": "split_sum_normalized",
+      "params": { "expected_sum": 100.0, "tolerance": 0.01 },
+      "source": "词曲分成确认通用要求",
+      "enabled": true
+    },
+    "C-004": {
+      "group": "著作权元数据",
+      "region": "*",
+      "severity": "BLOCK",
+      "desc": "母带权利人须明确（自录 / 他人母带，混用为侵权高发点）",
+      "check": "master_rights_declared",
+      "source": "发行商发行要求通用",
+      "enabled": true
+    },
+    "C-005": {
+      "group": "著作权元数据",
+      "region": "*",
+      "severity": "BLOCK",
+      "desc": "采样 / 声线 / 音色克隆授权书须齐备",
+      "check": "sample_voice_license",
+      "source": "著作权与声音权通用要求",
+      "enabled": true
+    },
+
+    "D-001": {
+      "group": "AI 使用说明",
+      "region": "*",
+      "severity": "WARN",
+      "desc": "AI 使用说明须含四要素：工具名 / 版本 / 参与环节 / 输入来源（多数人只写「AI 生成」——这是本工具的差异点）",
+      "check": "ai_usage_four_elements",
+      "params": { "elements": ["tool", "version", "stage", "input_source"] },
+      "source": "本项目自定义增量字段",
+      "enabled": true
+    },
+
+    "E-001": {
+      "group": "歌词抄袭客观特征",
+      "region": "*",
+      "severity": "WARN",
+      "desc": "提取客观相似特征供人工判断。⛔ 本工具绝不下「侵权/不侵权」结论——法律标准是「接触 + 实质性相似」，无量化法定阈值，必须人判。",
+      "check": "lyrics_objective_features",
+      "params": {
+        "ngram": 4,
+        "warn_char_ratio_high": 0.45,
+        "warn_char_ratio_low": 0.10,
+        "warn_structure_match": true
+      },
+      "source": "中国法院音乐著作权裁判标准（接触+实质性相似）",
+      "enabled": true
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "title": "夹具·歌词结构相似检测（自造对照文本，不涉外部版权）",
+  "_note": "用于验证 E-001：字级重合率低但结构/韵脚高度相似 —— 这正是「新套马杆」案的特征（179 vs 182 字仅 52 字相同仍判侵权）。本夹具两段歌词均为本项目自造。",
+  "type": "audio",
+  "lyrics": "给我一片湖海\n让我停在这里\n不管这世道\n有人曾在意\n给我一片湖海\n让我停在这里\n看潮水涌来\n像极了旧日\n给我一片远方\n让我走完这段\n不问值不值得\n也要再看一眼\n给我一片湖海\n让我停在这里\n看潮水退去",
+  "metadata": {
+    "explicit_ai_label": true,
+    "implicit_ai_flag": true,
+    "eu_ai_disclosed": true,
+    "composer": "善伦",
+    "lyricist": "善伦",
+    "performer": "通感者",
+    "producer": "李四",
+    "isrc": "CNA231600002",
+    "upc": "695123456790",
+    "splits": [ { "name": "善伦", "percent": 100 } ],
+    "master_rights": "自录",
+    "uses_samples": false,
+    "uses_voice_clone": false,
+    "licenses": {},
+    "ai_credits": {
+      "vocal": "非 AI",
+      "lyrics": "AI 润色",
+      "instrumental": "AI 生成（Suno v4.1）",
+      "post_production": "非 AI"
+    },
+    "ai_usage": {
+      "tool": "Suno",
+      "version": "v4.1",
+      "stage": "instrumental（伴奏）",
+      "input_source": "自写歌词"
+    }
+  },
+  "_context": {
+    "ai_generated": true,
+    "distributor": "spotify",
+    "target_regions": ["CN"],
+    "reference_lyrics": "摘一片阴凉\n让我停在这里\n不问归途远\n谁曾负过我\n摘一片阴凉\n让我停在这里\n看云卷云舒\n如昨日重现\n摘一段时光\n让我走完这段\n不问值不值得\n也要再看一眼\n摘一片阴凉\n让我停在这里\n看潮水退去"
+  }
+}
