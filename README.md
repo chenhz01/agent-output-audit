@@ -145,6 +145,39 @@ class RuleSet:
 
 ---
 
+## 配套工具：`tools/real_defect_scanner.py`
+
+体检引擎查的是「**你的产出**有没有形式缺陷」。这个工具查的是另一头：
+**上游 issue / PR 描述里的缺陷长什么样**——用来反推规则集该抓什么。
+
+它按六类「静默失效」判据扫文本，每类都是从真实上游缺陷反推的（非凭空设计）：
+
+| 类 | 缺陷 | 真实例（2026-10 核验） |
+|---|---|---|
+| S1 | 静默降级 | [SOCKS5 认证失败静默回退直连](https://github.com/CloakHQ/CloakBrowser/issues/157) |
+| S2 | 归因缺口 | 状态变更无head/sequence 锚，重试或并发下错算 |
+| S3 | 假成功 | 自报 done/success，实际未生效（[分词器漏非 ASCII](https://github.com/trailhq/Graft/issues/432)） |
+| S4 | 无界增长 | 资源无上界（[ledger 涨到锁超时](https://github.com/ruvnet/ruflo/issues/3164)） |
+| S5 | 假过滤 | 策略实际未生效（[deny 策略热重载期被绕过](https://github.com/anomalyco/opencode/issues/52333)） |
+| S6 | 量纲错配 | 同名量不同单位（ms 与 s 混用） |
+
+```bash
+python tools/real_defect_scanner.py <路径> [--json] [--include-docs]
+python tools/real_defect_scanner.py . --selftest    # 守门人自检（6 正样本 + 7 负样本）
+```
+
+- 退出码：`0` 干净 / `1` 有命中 / `2` 用法错。
+- **主战场是 issue/PR 描述文本**：实测 218 份真实 issue 标题 → 12 行独立命中，
+  人工逐条核对为真缺陷。
+- **对源码召回接近于零**（实测 472 与 3118 个文件 → 0~2 命中，且都落在测试字符串里）。
+  所以它不是静态分析器，别拿它当 lint 用。
+- 判据是英文关键词形态，换文风（「悄悄失败」）会漏；判据非恒真已用严格版反证过
+  （删 2 条 S4 模式 → 命中 13→12，方向正确翻）。
+- 守卫有v1.1→v1.4 四次迭代史（三类误报形态：否定语义 / 文档字面量 / docstring 内部）。
+  CHANGELOG 视为过时线索默认排除——命中≠缺陷仍存在，对外指控前必须回原仓核实。
+
+---
+
 ## 诚实边界
 
 - 只做**形式与可追溯性**检查，**不判断内容对错**。
