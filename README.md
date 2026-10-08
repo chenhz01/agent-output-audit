@@ -183,6 +183,27 @@ python tools/real_defect_scanner.py . --selftest    # 守门人自检（6 正样
 
 ---
 
+## 与 [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) 的关系
+
+同处 AI Agent 质量赛道，但**互补不重叠**：它管「agent **怎么干活**」（25 个流程技能，
+DEFINE→SHIP 生命周期组织，`npx skills add` 分发），本项目管「agent **干完的产出能不能出门**」
+（出口闸 + 机读报告）。`doubt-driven-development` 等同名技能是社区通用概念名（对抗审查、TDD），
+两边各自独立实现，语义见各自文档。
+
+| | addyosmani/agent-skills | 本项目 |
+|---|---|---|
+| 拦截点 | 过程中（写代码/做计划时介入） | 出口处（产出交付/上架/发布前拦截） |
+| 检查对象 | 代码变更、架构、测试有效性 | AI 生成的交付物：listing/歌词/日报/HTML/短视频脚本 |
+| 判定依据 | 工程最佳实践（Google 工程文化） | 政策原文逐条对标（Amazon/Google Ads/发行商/欧盟 AI Act），每条带 `source` 与 `enforce_type` 强度分级 |
+| 退出码 | Approve / Request changes（评审结论） | `0/1/2/3` 严格四分：内容问题与工具故障绝不混同 |
+| 机读出口 | — | SARIF（GitHub Code Scanning）/ JUnit / JSON |
+
+**它有而本项目（暂）没有的**：`npx skills add` 统一分发入口、变异测试验证测试有效性、
+生命周期完整叙事。**本项目有而它没有的**：可核证的政策 source 表（护城河）、
+法规强度分级、全 SKIP 守卫（宁报故障不给假绿）、面向非代码产出的垂类规则集。
+
+---
+
 ## 诚实边界
 
 - 只做**形式与可追溯性**检查，**不判断内容对错**。
