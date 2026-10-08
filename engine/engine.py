@@ -239,6 +239,27 @@ class Engine:
                 counts['PASS'] += 1
             else:
                 counts['SKIP'] += 1
+        # v1.0.4：全 SKIP 守卫 —— 假绿的最后一闸。
+        # 实测（ecommerce 规则集）：规则集只认 track['listing'] 嵌套结构，
+        # 扁平 listing 被 SKIP 9 条、PASS 0 条，counts 是
+        # BLOCK 0 / WARN 0 / INFO 0 / PASS 0 / SKIP 9，
+        # 引擎却按 'clean' 退出 0 —— 一份**什么都没查**的体检被当成
+        # 「通过」交出去。全 SKIP 只能是适配或结构出错，不可能是「没问题」。
+        # 与 v1.0.2 零规则守卫同源：宁可吵，不可静默绿灯。
+        all_skipped = (counts['SKIP'] == len(results)
+                       and counts['BLOCK'] == 0 and counts['WARN'] == 0
+                       and counts['INFO'] == 0 and counts['PASS'] == 0)
+        if all_skipped:
+            counts['ERROR'] += 1
+            # v2.1.1：原引用 rules[0]，但 rules 是 run() 的局部变量 —— 全 SKIP
+            # 守卫一触发就 NameError 崩溃（design 规则集接 JSON 目标时实测命中）。
+            # 改用 results[0].rule（全 SKIP 时 results 必非空且每条带 rule）。
+            results.append(RuleResult(
+                results[0].rule, 'ERROR',
+                f'全 {len(results)} 条规则均 SKIP —— 未检出任何可判定内容。'
+                f'典型原因：① 规则集与目标形态不匹配（用 ecommerce 去体检某首歌）'
+                f'② 适配器没把业务字段提出来 ③ 目标文件取错路径。'
+                f'**这不是「通过」，请不要据此放行。**'))
         # 规则集自身故障 → 退出码 3（区别于「检出了问题」）
         code = ('error' if counts['ERROR'] else
                 'block' if counts['BLOCK'] else

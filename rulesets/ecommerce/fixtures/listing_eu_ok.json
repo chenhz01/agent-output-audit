@@ -1,0 +1,24 @@
+{
+  "product": {
+    "name": "Portable Blender 600ml",
+    "category": "kitchen",
+    "claims": "可打碎冰块"
+  },
+  "title": "Portable Blender 600ml USB-C Rechargeable Personal Size Cold Juice Cup for Shakes and Smoothies Travel",
+  "bullets": [
+    "容量：600ml 杯身，单次可榨四杯冷饮，适合通勤与 office 使用",
+    "刀头：304 不锈钢四叶刀头，30 秒完成碎冰与果泥制作",
+    "充电：USB-C 快充接口，满电支持二十次连续制作",
+    "材质：Tritan 食品级杯身，不含双酚 A，耐摔耐温",
+    "清洁：杯盖与刀座可分离，清水冲洗即可，无需工具拆装"
+  ],
+  "ad_copy": {
+    "headline": "600ml 便携榨汁杯",
+    "description": "不锈钢刀头搭配 Tritan 杯身"
+  },
+  "marketplace": "EU",
+  "_context": {
+    "marketplace": "EU",
+    "ai_generated": true
+  }
+}

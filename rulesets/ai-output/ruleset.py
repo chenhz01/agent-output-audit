@@ -124,8 +124,12 @@ def chk_placeholder(target, rule, ctx):
     ps = target.get('placeholders') or []
     allow = rule.get('params', {}).get('max_allowed', 0)
     if len(ps) > allow:
+        # v1.0.2：计数与明细必须一致 —— 原写法报「6 处」却只列 4 行，
+        # 属于 BLOCK 级消息自相矛盾，读者无法据此定位。超 4 条时明说省略。
+        shown = ps if len(ps) <= 4 else ps[:3]
+        tail = f'……（共 {len(ps)} 处）' if len(ps) > 4 else ''
         return ('FAIL', f'{len(ps)} 处占位符未替换：' +
-                '、'.join(f'第{p["line"]}行 {p["label"]}' for p in ps[:4]))
+                '、'.join(f'第{p["line"]}行 {p["label"]}' for p in shown) + tail)
     return ('PASS', '无未替换占位符')
 
 
@@ -134,8 +138,10 @@ def chk_codeblock_unclosed(target, rule, ctx):
         return ('SKIP', '非 markdown，不适用')
     bad = [b for b in (target.get('code_blocks') or []) if not b.get('closed')]
     if bad:
+        shown = bad if len(bad) <= 4 else bad[:3]
+        tail = f'……（共 {len(bad)} 处）' if len(bad) > 4 else ''
         return ('FAIL', f'{len(bad)} 处代码块未闭合，起始行：' +
-                '、'.join(str(b.get('start_line')) for b in bad[:4]))
+                '、'.join(str(b.get('start_line')) for b in shown) + tail)
     return ('PASS', f'{(len(target.get("code_blocks") or []))} 处代码块均闭合')
 
 

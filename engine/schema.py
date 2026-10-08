@@ -36,10 +36,17 @@ ABSOLUTE_PATTERNS = [
 PLACEHOLDER_PATTERNS = [
     (r'\bTBD\b', 'TBD'), (r'\bTODO\b', 'TODO'), (r'\bFIXME\b', 'FIXME'),
     (r'\bXXX+\b', 'XXX'), (r'待补', '待补'), (r'待定', '待定'),
-    (r'占位', '占位'), (r'\{\{.*?\}\}', '{{占位符}}'),
-    (r'【\s*】', '空书名号'), (r'\(\s*\)', '空括号'),
-    (r'（\s*）', '空括号'),
+    (r'待填', '待填'), (r'\{\{.*?\}\}', '{{占位符}}'),
+    (r'【\s*】', '空书名号'), (r'（\s*）', '空全角括号'),
 ]
+
+# ⚠ v1.1.0 删掉两条误报率极高的判据 —— 用本项目自己的 README 实测坐实：
+#   ① 裸 `占位`：命中正文里「占位符残留 · 无源数字」这种【描述规则的词】。
+#      一个词无法与正文区分时，就不配做 BLOCK 判据。
+#   ② `\(\s*\)` 空半角括号：命中 `validate()` / `r.items()` 里的空括号，
+#      而空半角括号在代码与表格里遍地都是，不是「该填没填」的标记。
+#      只保留【全角】空括号「（）」作为判据。
+#   另：围栏代码块内的行由调用方 skip_lines 排除（见 find_placeholders_lines）。
 
 SOURCE_HINT = re.compile(
     r'(https?://|来源|出处|依据|参见|见\s*第?\s*\d+\s*[章节页条]'
@@ -67,9 +74,17 @@ def strip_noise(text):
     return _NOISE.sub(' ', text)
 
 
-def find_placeholders(text, line_offset=0):
+def find_placeholders(text, line_offset=0, skip_lines=None):
+    """skip_lines: 需跳过的行号集合（如 markdown 围栏代码块内的行）。
+
+    代码块里几乎必然出现 `()`、`{}`、以及描述性字样，把它们当占位符
+    BLOCK 掉，只会训练用户忽略 BLOCK —— 那比没有 BLOCK 更糟。
+    """
+    skip = skip_lines or ()
     out = []
     for i, line in enumerate(text.splitlines(), 1):
+        if i in skip:
+            continue
         for pat, label in PLACEHOLDER_PATTERNS:
             m = re.search(pat, line, flags=re.I)
             if m:
@@ -150,9 +165,12 @@ def _claims_from_lines(lines):
     return out
 
 
-def find_placeholders_lines(lines):
+def find_placeholders_lines(lines, skip_lines=None):
+    skip = skip_lines or ()
     out = []
     for lineno, raw in lines:
+        if lineno in skip:
+            continue
         for pat, label in PLACEHOLDER_PATTERNS:
             m = re.search(pat, raw, flags=re.I)
             if m:

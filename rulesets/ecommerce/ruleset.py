@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(HERE, '..', '..')))
 from engine.engine import Rule  # noqa: E402
 
 POLICY = {
-    'version': '2026-10-04.0',
+    'version': '2026-10-08.0',
     'display': '跨境电商 listing 合规',
     'red_lines': [
         '本规则集只做【可确定性判定】的检查；不做商品合规性的实质判断',
@@ -62,7 +62,9 @@ POLICY = {
             'enforce_type': 'platform_technical',
             'desc': '五点描述不得含 emoji 与特定符号集（™®€…†‡o¢£¥©±~）',
             'check': 'amz_bullet_chars',
-            'params': {'banned_chars': '™®€…†‡o¢£¥©±~'},
+            # v0.1.1：删掉串在表里的字母 `o`（原写作 '™®€…†‡o¢£¥©±~'）。
+            # 它让任何含字母 o 的英文五点都被判违规 —— 该规则等于失效。
+            'params': {'banned_chars': '™®€…†‡¢£¥©±~'},
             'source': 'Amazon 五点描述规范',
         },
         'AMZ-BULLET-EMOTION': {
@@ -139,7 +141,23 @@ POLICY = {
 
 
 def _listing(track):
-    return track.get('listing', {})
+    """取 listing 结构，兼容真实世界的两种写法。
+
+    - 嵌套：{"listing": {"title":…, "bullets":[…]}}   —— 部分导出工具
+    - 扁平：{"title":…, "bullets":[…]}                —— **最常用形态**
+
+    v0.1.2 教训：本函数原写作 track.get('listing', {})，只认嵌套。
+    扁平 listing 直接拿不到 title/bullets/ad_copy → 10 条规则 SKIP 9 条，
+    报告却是「放行 / exit 0」——**假绿**。而扁平才是默认用法，
+    只测嵌套的夹具等于拿幸运路径冒充功能可用。
+    """
+    inner = track.get('listing')
+    if isinstance(inner, dict):
+        return inner
+    # 扁平：把顶层业务字段收成同一形状，让下游规则不必分两种写法
+    keep = ('title', 'bullets', 'ad_copy', 'product', 'marketplace')
+    return {k: v for k, v in track.items()
+            if k in keep and not k.startswith('_')}
 
 
 def check_amz_title_len(track, rule, ctx):
@@ -311,7 +329,27 @@ class RuleSet:
 
     @classmethod
     def validate(cls):
-        """返回 check 字段无法解析的规则 ID 列表（空=全部对得上）"""
-        return [rid for rid, rd in POLICY['rules'].items()
-                if rd.get('check') not in CHECKERS]
+        """返回「配置错误」的规则 ID 列表（空=全部对得上）。
+
+        两类错都在这里抓住，不让它等到跑的时候才炸：
+        1. check 字段对不上 CHECKERS —— 键名不匹配会静默变 0 条规则。
+        2. 禁符表混进字母 —— v0.1.1 实际踩过：AMZ-BULLET-CHARS 的
+           banned_chars 里混进一个小写 `o`，导致任何含字母 o 的英文
+           五点（office / product / bottle / motion…）全部 BLOCK。
+           「符号表误含普通字母」这种 bug 肉眼几乎看不出来，但在英文
+           语料上是核弹级误报。所以做硬断言：banned_chars 出现任何
+           字母，一律点名报错，不许上线。
+           ⚠ 只对 banned_chars 断言，不看 banned_words ——
+           禁词本来就是英文词组（guaranteed / freebie），里面有字母是对的。
+        """
+        bad = []
+        for rid, rd in POLICY['rules'].items():
+            if rd.get('check') not in CHECKERS:
+                bad.append(rid)
+            for c in rd.get('params', {}).get('banned_chars', '') or '':
+                if c.isalpha():
+                    bad.append(
+                        f'{rid}（banned_chars 含字母 {c!r}，'
+                        f'会把普通英文词判成违规）')
+        return bad
 

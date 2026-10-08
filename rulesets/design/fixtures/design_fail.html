@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><title>design 夹具 · 必挂</title>
+<style>
+  body { background: #0b0e14; color: #e6eaf2; font-family: Inter, sans-serif; font-size: 14px; }
+  .hero { color: #888888; background: #7a7a7a; padding: 2px; margin: 0; }
+  .p1 { font-size: 16px; }
+  .p2 { font-size: 17px; }
+  .overlay { position: absolute; z-index: -1; margin: -2px; }
+</style>
+</head>
+<body>
+  <div class="hero">灰 on 灰：#888 on #7a ≈ 1.2:1，任何字号都不达标 → BLOCK</div>
+  <p class="p1">字号 14/16/17：17/16 步进 1.06 &lt; 1.125 → WARN</p>
+  <p class="p2" style="padding: 3px;">3px 间距 &lt; 4px → WARN；Inter 黑名单 → WARN；负 z-index + absolute → WARN</p>
+  <div class="overlay"></div>
+</body>
+</html>

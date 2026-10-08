@@ -64,7 +64,13 @@ def _md(path, text):
                   for m in re.finditer(r'\[([^\]]{0,60})\]\(([^)]+)\)', text)]
     d['claims'] = S.find_claims(text)
     d['numbers'] = S.find_numbers(text)
-    d['placeholders'] = S.find_placeholders(text)
+    # 围栏代码块内的行不参与占位符扫描：`validate()` / `r.items()` 里的
+    # 空半角括号、示例代码里的 `{k: v}` 都不是占位符（实测误报，v1.1.0 修）。
+    _fenced = set()
+    for _b in d.get('code_blocks') or []:
+        if _b.get('end_line'):
+            _fenced.update(range(_b['start_line'], _b['end_line'] + 1))
+    d['placeholders'] = S.find_placeholders(text, skip_lines=_fenced)
     d['absolute'] = S.find_absolute(text)
     d['raw_lines'] = len(text.splitlines())
     d['raw_chars'] = len(text)
