@@ -75,19 +75,40 @@ def render_text(rep):
     return '\n'.join(L)
 
 
+def _verdict(status):
+    """internal status → verdict（对标 cloudflare/security-audit-skill 三态语义）
+
+    v1.1.0：机读出口增加 verdict 档位，与内部 severity 解耦——
+      confirmed        FAIL  机器 100% 确定的问题（对应 BLOCK）
+      needs_validation WARN  有确切未决事实，需人判断（对应 WARN）
+      pass             PASS  检查过、未发现问题（= 候选「有问题」被证伪）
+      not_covered      SKIP  该维度未覆盖（对应 coverage ledger 的缺口概念）
+      tool_error       ERROR 工具故障，不是对产出的判断
+    判定逻辑零改动——这只是把同一份结果翻译成更通用的机读词汇。
+    """
+    return {'FAIL': 'confirmed', 'WARN': 'needs_validation',
+            'PASS': 'pass', 'SKIP': 'not_covered',
+            'INFO': 'needs_validation', 'ERROR': 'tool_error'}.get(status, 'needs_validation')
+
+
 def render_json(rep):
+    findings = [{
+        'id': r.rule.id, 'severity': r.effective_status,
+        'verdict': _verdict(r.effective_status),
+        'raw_status': r.status, 'message': r.detail,
+        'enforce_type': r.rule.meta.get('enforce_type'),
+        'source': r.rule.meta.get('source'),
+        'confidence': r.confidence, 'coverage': r.coverage,
+    } for r in rep['results']]
+    verdict_counts = {}
+    for f in findings:
+        verdict_counts[f['verdict']] = verdict_counts.get(f['verdict'], 0) + 1
     return json.dumps({
         'engine': rep['engine'], 'ruleset': rep['ruleset'],
         'ruleset_version': rep['ruleset_version'],
         'target': rep['target'], 'exit_code': rep['exit_code'],
-        'counts': rep['counts'],
-        'findings': [{
-            'id': r.rule.id, 'severity': r.effective_status,
-            'raw_status': r.status, 'message': r.detail,
-            'enforce_type': r.rule.meta.get('enforce_type'),
-            'source': r.rule.meta.get('source'),
-            'confidence': r.confidence, 'coverage': r.coverage,
-        } for r in rep['results']],
+        'counts': rep['counts'], 'verdicts': verdict_counts,
+        'findings': findings,
     }, ensure_ascii=False, indent=2)
 
 

@@ -38,6 +38,16 @@ python aoa.py run <ruleset> <file> --format junit     # CI 通用
 > 退出码 3 必须与 1/2 严格区分：「规则坏了」和「内容有问题」是两回事。
 > 混同的后果是调用方把 bug 当提示忽略。
 
+**JSON 输出带 `verdicts` 三态档位**（对标
+[cloudflare/security-audit-skill](https://github.com/cloudflare/security-audit-skill)
+的机读语义）：`confirmed`（BLOCK，机器确定）/ `needs_validation`（WARN，需人判断）/
+`pass`（查过没查出）/ `not_covered`（SKIP，未覆盖）。判定与档位解耦——同一份结果，
+人类读 text，CI 读 sarif/junit，程序读 json。
+
+> **v0.2 路线**（已具名，未实现，不宣称）：① `needs_validation` 升为独立判定档
+> （附「确切未决事实」，不带 severity）② 独立验证通道（发现者≠验证者）③
+> coverage ledger 跨次运行增量覆盖。对标源：Cloudflare 六阶段审计。
+
 ---
 
 ## 规则集（46 条）
