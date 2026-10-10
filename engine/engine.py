@@ -68,12 +68,15 @@ class Rule:
 
 
 class RuleResult:
-    def __init__(self, rule, status, detail, confidence=None, coverage=None):
+    def __init__(self, rule, status, detail, confidence=None, coverage=None,
+                 evidence=None):
         self.rule = rule
-        self.status = status              # PASS / FAIL / WARN / INFO / SKIP
+        self.status = status              # PASS / FAIL / WARN / INFO / SKIP /
+                                          # NEEDS_VALIDATION (v2.0.0)
         self.detail = detail
         self.confidence = confidence
         self.coverage = coverage
+        self.evidence = evidence          # [(line, snippet), …] 独立复核证据
 
     @property
     def effective_status(self):
@@ -190,6 +193,8 @@ class Engine:
             if not rule.meta.get('enabled', True):
                 results.append(RuleResult(rule, 'SKIP', '规则已停用(enabled=false)'))
                 continue
+            # 每条规则开跑前清掉上一条的回填残留（防异常路径污染下一条）
+            ctx['_last_evidence'] = None
             try:
                 out = rule.check_fn(target, rule, ctx)
                 if isinstance(out, RuleResult):
@@ -203,6 +208,24 @@ class Engine:
                 if last and r.confidence is None:
                     r.confidence, r.coverage = last
                     ctx['_last_confidence'] = None
+                # v2.0.0 独立复核闸 —— 「发现者≠验证者」最小落地
+                # （对标 cloudflare/security-audit-skill 六阶段的 Phase 5）。
+                # 规则判 FAIL 时可附证据列表 [(line, snippet), …]；引擎**拿原文
+                # 独立验证**每条证据：行号越界或片段不在该行 → 整个 FAIL 降
+                # NEEDS_VALIDATION。降档不是改判：是「发现者说有问题、验证器
+                # 在原文里查不到证据」时的诚实档。验证器与发现者共用原文、
+                # 但不共用规则逻辑 —— 与「同一 agent 自查自证」划清界限。
+                ev = ctx.get('_last_evidence')
+                if ev and r.effective_status == 'FAIL':
+                    _lines = raw_text.splitlines()
+                    ok = all(0 < ln <= len(_lines) and snip in _lines[ln - 1]
+                             for ln, snip in ev)
+                    if not ok:
+                        r.status = 'NEEDS_VALIDATION'
+                        r.evidence = list(ev)
+                        r.detail = (r.detail + '　[独立复核降档：验证器未能在原文'
+                                    '对应行核实所声称的违规证据——'
+                                    '发现者≠验证者，请人工定位]')
             except Exception as e:
                 r = RuleResult(rule, 'ERROR',
                                f'检查器异常: {type(e).__name__}: {e}')
@@ -216,8 +239,8 @@ class Engine:
         return EXIT_CODES['error']
 
     def _summarize(self, rs, results, target):
-        counts = {k: 0 for k in ['BLOCK', 'WARN', 'INFO', 'PASS', 'SKIP',
-                                 'FAIL', 'ERROR']}
+        counts = {k: 0 for k in ['BLOCK', 'WARN', 'NEEDS_VALIDATION',
+                                 'INFO', 'PASS', 'SKIP', 'FAIL', 'ERROR']}
         downgraded, errored = [], []
         for r in results:
             st = r.effective_status
@@ -233,6 +256,14 @@ class Engine:
                 counts['WARN'] += 1
                 if r.status == 'FAIL':
                     downgraded.append(r)
+            elif st == 'NEEDS_VALIDATION':
+                # v2.0.0：三态档（对标 cloudflare/security-audit-skill 语义）。
+                # NEEDS_VALIDATION = 规则**无法完成判定但知道卡在哪**：
+                # 有确切的未决事实、不带 severity —— 与 WARN（判定完成但需人确认）
+                # 是两回事。混进 WARN 的后果：调用方以为「已经判过了，风险中等」，
+                # 实际是「根本没判」。退出码归 2 档（不破坏 0/1/2/3 契约），
+                # 但计数单列，JSON verdicts 也单列。
+                counts['NEEDS_VALIDATION'] += 1
             elif st == 'INFO':
                 counts['INFO'] += 1
             elif st == 'PASS':
@@ -248,7 +279,8 @@ class Engine:
         # 与 v1.0.2 零规则守卫同源：宁可吵，不可静默绿灯。
         all_skipped = (counts['SKIP'] == len(results)
                        and counts['BLOCK'] == 0 and counts['WARN'] == 0
-                       and counts['INFO'] == 0 and counts['PASS'] == 0)
+                       and counts['INFO'] == 0 and counts['PASS'] == 0
+                       and counts['NEEDS_VALIDATION'] == 0)
         if all_skipped:
             counts['ERROR'] += 1
             # v2.1.1：原引用 rules[0]，但 rules 是 run() 的局部变量 —— 全 SKIP
@@ -261,9 +293,11 @@ class Engine:
                 f'② 适配器没把业务字段提出来 ③ 目标文件取错路径。'
                 f'**这不是「通过」，请不要据此放行。**'))
         # 规则集自身故障 → 退出码 3（区别于「检出了问题」）
+        # v2.0.0：NEEDS_VALIDATION 归 2 档（要人看），退出码契约 0/1/2/3 不变
         code = ('error' if counts['ERROR'] else
                 'block' if counts['BLOCK'] else
-                'warn' if counts['WARN'] else 'clean')
+                'warn' if (counts['WARN'] or counts['NEEDS_VALIDATION'])
+                else 'clean')
         return {
             'engine': 'agent-output-audit',
             'ruleset': rs.name, 'ruleset_version': rs.version,

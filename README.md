@@ -40,13 +40,28 @@ python aoa.py run <ruleset> <file> --format junit     # CI 通用
 
 **JSON 输出带 `verdicts` 三态档位**（对标
 [cloudflare/security-audit-skill](https://github.com/cloudflare/security-audit-skill)
-的机读语义）：`confirmed`（BLOCK，机器确定）/ `needs_validation`（WARN，需人判断）/
-`pass`（查过没查出）/ `not_covered`（SKIP，未覆盖）。判定与档位解耦——同一份结果，
-人类读 text，CI 读 sarif/junit，程序读 json。
+的机读语义）：`confirmed`（BLOCK，机器确定）/ `needs_validation`（WARN 与
+NEEDS_VALIDATION）/ `pass`（查过没查出）/ `not_covered`（SKIP，未覆盖）。
+判定与档位解耦——同一份结果，人类读 text，CI 读 sarif/junit，程序读 json。
 
-> **v0.2 路线**（已具名，未实现，不宣称）：① `needs_validation` 升为独立判定档
-> （附「确切未决事实」，不带 severity）② 独立验证通道（发现者≠验证者）③
-> coverage ledger 跨次运行增量覆盖。对标源：Cloudflare 六阶段审计。
+**v2.0.0 三态判定 + 两大可信机制**（均已实现并带测试夹具）：
+
+1. **`NEEDS_VALIDATION` 独立判定档** —— 规则「无法完成判定但知道卡在哪」时
+   返回此档：有确切的未决事实、不带 severity。与 WARN 的区别：WARN 是
+   「判定完成、需人确认」，NV 是「根本没判」。实例：listing 未声明
+   `marketplace` 时，标题上限（美国 75 / 欧洲 200）判不了——工具不再默认按
+   美国站猜（旧默认双向出错：误杀欧洲卖家的合法长标题 / 放过美国站超限标题）。
+   退出码契约 0/1/2/3 不变，NV 归 2 档但计数单列。
+2. **独立复核闸（发现者≠验证者）** —— 规则判 FAIL 时可附证据
+   `[(行号, 片段), …]`，引擎拿原文**独立核实**每条；行号越界或片段不在该行
+   → 整个 FAIL 降为 NEEDS_VALIDATION。夹具：`tests/verify_gate/`
+   （LIAR 假证据被降档 / HONEST 真证据保持 FAIL）。
+3. **coverage ledger** —— `aoa.py run <rs> <file> --ledger <json>`：
+   记录每次运行的逐规则判定，下次自动对比「新增 FAIL N 条 / 已解决 N 条」，
+   CI 增量降噪。原子写。
+
+> 对标诚实边界：本项目的「独立复核」是**单进程内用原文独立验证证据**，
+> 与 Cloudflare 的多 agent 物理隔离复核仍有代差；多 agent 通道在实现前不宣称。
 
 ---
 

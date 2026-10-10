@@ -63,7 +63,11 @@ POLICY = {
         'SCRIPT-RATE': {
             'group': '时间轴',
             'severity': 'WARN',
-            'enforce_type': 'platform_technical',
+            # v1.0.1 判据来源修正（2026-10-09 SCT 标注审计）：
+            # 220-280 字/分是经验基准，不是任何平台的技术规范 —— 原标
+            # platform_technical 属于「借外部权威自抬身价」，按判据来源
+            # 应归自定（project_custom），结论采信时降一级。
+            'enforce_type': 'project_custom',
             'desc': '口播字数与目标时长不匹配（中文口播 220-280 字/分）',
             'check': 'sv_rate',
             'params': {'per_min_low': 220, 'per_min_high': 280, 'fast_high': 340},

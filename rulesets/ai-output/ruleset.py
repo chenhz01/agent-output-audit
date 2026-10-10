@@ -27,7 +27,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(HERE, '..', '..')))
 from engine.engine import Rule  # noqa: E402
 
 POLICY = {
-    'version': '1.0.0',
+    'version': '1.1.0',
     'display': 'AI 产出通用体检',
     'applies_to': ['markdown', 'html', 'code'],
     'red_lines': [
@@ -114,6 +114,15 @@ POLICY = {
             'params': {'min_lines': 20, 'max_lines': 4000},
             'source': '交付质量基线',
         },
+        'COMPLETION-NO-EXIT': {
+            'group': '完成声明',
+            'severity': 'WARN',
+            'enforce_type': 'project_custom',
+            'desc': '自报完成（已完成/跑通/全部通过…）但全文无任何退路声明（未通过怎么办/回滚/降级/视为未完成）——按 ZEG 降级为「未验证的自报」而非完成',
+            'check': 'chk_completion_no_exit',
+            'params': {'report_top': 3},
+            'source': '突破-2026-10-07-ZEGv1.0：完成声明=交付物+可执行验证+未通过动作+判定人',
+        },
     },
 }
 
@@ -128,6 +137,9 @@ def chk_placeholder(target, rule, ctx):
         # 属于 BLOCK 级消息自相矛盾，读者无法据此定位。超 4 条时明说省略。
         shown = ps if len(ps) <= 4 else ps[:3]
         tail = f'……（共 {len(ps)} 处）' if len(ps) > 4 else ''
+        # v2.0.0：附证据行号+命中文本，交引擎独立复核（发现者≠验证者）。
+        # 引擎拿原文逐条核对；对不上则整个 FAIL 降 NEEDS_VALIDATION。
+        ctx['_last_evidence'] = [(p['line'], p['text']) for p in ps]
         return ('FAIL', f'{len(ps)} 处占位符未替换：' +
                 '、'.join(f'第{p["line"]}行 {p["label"]}' for p in shown) + tail)
     return ('PASS', '无未替换占位符')
@@ -244,6 +256,47 @@ def chk_size(target, rule, ctx):
     if n > p.get('max_lines', 4000):
         return ('WARN', f'{n} 行，超过 {p.get("max_lines")} 行 —— 疑似灌水')
     return ('PASS', f'{n} 行，规模正常')
+
+
+# ---- ZEG 退出闸门（v1.1 规则族新增 2026-10-09）----
+# 完成语料（保守清单，防过宽误伤；前邻字符为 未/没/无/别/不 时视为否定不命中）
+ZEG_DONE_WORDS = ('已完成', '跑通', '全部通过', '测试通过', '自检通过', '验收通过',
+                  '全绿', '执行完毕', '搞定')
+# 退路语料：证明「未通过怎么办」已被回答
+ZEG_EXIT_WORDS = ('未通过', '不通过时', '不过怎么办', '失败时', '失败怎么办',
+                  '回滚', '降级', '兜底', '视为未完成', '判未完成', '未验证',
+                  'fallback', 'rollback', 'retry')
+_ZEG_NEG_PREFIX = '未没无别不'
+
+
+def _zeg_scan(raw, words):
+    """逐行扫描词表命中，返回 [(line_no, word, snippet)]；否定前缀不命中。"""
+    hits = []
+    for i, line in enumerate(raw.splitlines(), 1):
+        for w in words:
+            idx = line.find(w)
+            if idx >= 0:
+                if idx > 0 and line[idx - 1] in _ZEG_NEG_PREFIX:
+                    continue
+                hits.append((i, w, line.strip()[:40]))
+                break
+    return hits
+
+
+def chk_completion_no_exit(target, rule, ctx):
+    raw = ctx.get('_raw', '')
+    if not raw:
+        return ('SKIP', '未提供原文（JSON 目标不做文本扫描）')
+    done = _zeg_scan(raw, ZEG_DONE_WORDS)
+    if not done:
+        return ('PASS', '无自报完成表述（ZEG 不适用）')
+    ex = _zeg_scan(raw, ZEG_EXIT_WORDS)
+    if ex:
+        return ('PASS', f'{len(done)} 处自报完成、已含 {len(ex)} 处退路声明（ZEG 过）')
+    top = rule.get('params', {}).get('report_top', 3)
+    return ('WARN', f'{len(done)} 处自报完成但全文无退路声明'
+                    f'（未通过怎么办/回滚/降级/视为未完成）——按 ZEG 判「未验证的自报」而非完成。例：' +
+            '；'.join(f'第{h[0]}行「{h[2]}」' for h in done[:top]))
 
 
 CHECKERS = {k: v for k, v in list(globals().items())

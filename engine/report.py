@@ -23,6 +23,11 @@ def _sev_sarif(status):
     **所有阻塞项都被降级成提示** —— GitHub Code Scanning 会直接忽略它们。
     这正是「新增指标没验证它对已知案例能出正确值」的又一处实例。
     """
+    # v2.0.0：NEEDS_VALIDATION 用 'note' 而非 'warning' —— 它没有 severity
+    # （没判完，不是「风险中等」），但必须出现在 Code Scanning 里让人看到
+    # 「哪里没判完」，否则又是静默。
+    if status == 'NEEDS_VALIDATION':
+        return 'note'
     return {'FAIL': 'error', 'ERROR': 'error',
             'WARN': 'warning', 'INFO': 'note',
             'PASS': 'none', 'SKIP': 'none'}.get(status, 'note')
@@ -41,14 +46,16 @@ def render_text(rep):
     L.append('=' * 74)
     for r in rep['results']:
         icon = {'FAIL': '✗', 'WARN': '⚠', 'PASS': '✓', 'ERROR': '💥',
-                'SKIP': '–', 'INFO': 'ℹ'}.get(r.effective_status, '?')
+                'SKIP': '–', 'INFO': 'ℹ',
+                'NEEDS_VALIDATION': '❓'}.get(r.effective_status, '?')
         et = r.rule.meta.get('enforce_type', '')
         L.append(f"{icon} [{r.rule.id}]({et}) {r.rule.desc}")
         L.append(f"      → {r.detail}")
     L.append('-' * 74)
     c = rep['counts']
     L.append(f"合计 {len(rep['results'])} 条：BLOCK {c['BLOCK']} ｜ WARN {c['WARN']} "
-             f"｜ INFO {c['INFO']} ｜ PASS {c['PASS']} ｜ SKIP {c['SKIP']}"
+             f"｜ NEEDS_VALIDATION {c.get('NEEDS_VALIDATION', 0)}"
+             f" ｜ INFO {c['INFO']} ｜ PASS {c['PASS']} ｜ SKIP {c['SKIP']}"
              + (f" ｜ **ERROR {c['ERROR']}**" if c.get('ERROR') else ''))
     for r in rep.get('errored', []):
         L.append(f"  💥 [{r.rule.id}] 检查器异常 —— 规则失效，非检出问题。"
@@ -70,6 +77,9 @@ def render_text(rep):
         L.append('结论：不通过（存在 BLOCK 项），先修再发布。')
     elif c['WARN']:
         L.append('结论：无 BLOCK，但有 WARN，需人眼确认。')
+    elif c.get('NEEDS_VALIDATION'):
+        L.append(f"结论：无 BLOCK，但有 {c['NEEDS_VALIDATION']} 项未判完"
+                 f"（NEEDS_VALIDATION）—— 不是「通过」，是「没判完」，请补信息重跑。")
     else:
         L.append('结论：通过。')
     return '\n'.join(L)
@@ -88,7 +98,9 @@ def _verdict(status):
     """
     return {'FAIL': 'confirmed', 'WARN': 'needs_validation',
             'PASS': 'pass', 'SKIP': 'not_covered',
-            'INFO': 'needs_validation', 'ERROR': 'tool_error'}.get(status, 'needs_validation')
+            'INFO': 'needs_validation', 'ERROR': 'tool_error',
+            'NEEDS_VALIDATION': 'needs_validation',
+            }.get(status, 'needs_validation')
 
 
 def render_json(rep):
@@ -126,7 +138,7 @@ def render_sarif(rep):
                     if k in ('enforce_type', 'group', 'source', 'severity')
                 },
             }
-        if r.effective_status in ('FAIL', 'WARN'):
+        if r.effective_status in ('FAIL', 'WARN', 'NEEDS_VALIDATION'):
             sarif_results.append({
                 'ruleId': rid,
                 'level': _sev_sarif(r.effective_status),
@@ -165,6 +177,11 @@ def render_junit(rep):
             lines.append(f'  <testcase name="{name}"><failure message="{detail}"/></testcase>')
         elif r.effective_status == 'SKIP':
             lines.append(f'  <testcase name="{name}"><skipped/></testcase>')
+        elif r.effective_status == 'NEEDS_VALIDATION':
+            # v2.0.0：没判完 ≠ 通过。JUnit 里标 skipped（带原因），
+            # 不允许它落进空 testcase（空 = 通过，又是静默假绿）。
+            lines.append(f'  <testcase name="{name}">'
+                         f'<skipped message="needs_validation: {detail}"/></testcase>')
         else:
             lines.append(f'  <testcase name="{name}"/>')
     lines.append('</testsuite>')

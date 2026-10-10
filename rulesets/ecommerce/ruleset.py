@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(HERE, '..', '..')))
 from engine.engine import Rule  # noqa: E402
 
 POLICY = {
-    'version': '2026-10-08.0',
+    'version': '2026-10-11.0',
     'display': '跨境电商 listing 合规',
     'red_lines': [
         '本规则集只做【可确定性判定】的检查；不做商品合规性的实质判断',
@@ -164,11 +164,21 @@ def check_amz_title_len(track, rule, ctx):
     t = _listing(track).get('title')
     if not t:
         return ('SKIP', '未提供标题')
-    limit = 75 if ctx.get('marketplace', 'US') == 'US' else 200
     n = len(t)
+    # v0.2.0 三态示范：marketplace 未声明时**不再默认按 US(75) 判定**。
+    # 旧逻辑的隐含假设会双向出错：EU 卖家的 76-200 字符合法标题被误杀
+    # （假阳性），US 卖家以为上限 200 而被搜索索引拒收（假阴性）。
+    # 判不了就说判不了——有确切的未决事实（marketplace），不带 severity。
+    mp = ctx.get('marketplace')
+    if not mp:
+        return ('NEEDS_VALIDATION',
+                f'标题 {n} 字符，但 _context.marketplace 未声明——'
+                f'无法确定适用上限（美国站 75 / 欧洲站 200）。'
+                f'请在 JSON 的 _context 里声明 marketplace 后重跑')
+    limit = 75 if mp == 'US' else 200
     if n > limit:
-        return ('FAIL', f'标题 {n} 字符，超出 {limit} 上限（{ctx.get("marketplace","US")} 站）')
-    return ('PASS', f'标题 {n} 字符 ≤ {limit}')
+        return ('FAIL', f'标题 {n} 字符，超出 {limit} 上限（{mp} 站）')
+    return ('PASS', f'标题 {n} 字符 ≤ {limit}（{mp} 站）')
 
 
 def check_amz_title_repeat(track, rule, ctx):
