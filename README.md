@@ -1,5 +1,15 @@
 # agent-output-audit
 
+> **现行版本 → [`chenhz01/output-gate`](https://github.com/chenhz01/output-gate)**
+>
+> 同一个引擎、五个规则集整体在那边（`python gate.py list` 可当面点出来）：
+> 命令行逐 flag 一致（可自己 `--help` 两边对比），示例与夹具全部提交、干净克隆可复现，
+> CI 逐规则集断言退出码——有干净夹具的方向两个都测（干净退 0、失败退 1），
+> 没有干净夹具的就明说只测一个方向，徽章因此真的会变红，
+> 还带一个你能自己重跑的自查脚本 `python tools/hotness.py`（15 条判据）。
+> 本仓保留为早期版本；`scripts/`、`tests/`、`docs/`、`SKILL.md`、`data/` 没有搬过去，
+> 需要那些的继续用本仓。
+
 **给 AI 产出做体检的规则引擎** · MIT License · Python 3.8+ · 零依赖
 
 > 检查 AI 写出来的东西：日报、HTML 交付件、代码、口播稿、商品 listing、音乐元数据……
